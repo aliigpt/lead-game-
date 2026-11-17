@@ -6,7 +6,7 @@ A free 3D multiplayer browser game that teaches AI prompting. It runs on phone a
 
 1. **Theme.** You're a prompt engineer inside an AI data center. The map is a circuit-board floor with GPU towers, server racks and a glowing AI core in the middle.
 2. **Learn by collecting.** Five prompt pieces float around the map: **R**ole, **C**ontext, **T**ask, **F**ormat, **E**xample. Each pickup shows a one-line lesson. Collect all five and you've built a full prompt worth +250. Die and you lose the pieces you're holding.
-3. **Enemies teach too.** Red "Hallucination" bots chase players. Destroying one (+50) shows a tip on spotting made-up AI answers. Tagging another player is worth +100, and the respawn screen shows a prompting tip.
+3. **Enemies teach too.** Red "Hallucination" bots chase players. Destroying one (+50) shows a tip for getting trustworthy answers. Tagging another player is worth +100, and the respawn screen shows a ChatGPT, Claude or Gemini feature tip. Every tip is labeled with its tool.
 4. **Controls.** Move, aim, shoot, plus one ability, **Regenerate**: a dash that heals 25 and gives a short shield. On desktop it's WASD, the mouse and Space. On a phone it's twin thumb sticks and a ⚡ button.
 5. **Growth loop.** An email gate comes before the first match. Inside the match there's an "Invite" link, and the end-of-round screen recaps "What you learned" next to a "Follow @aliigpt" button.
 

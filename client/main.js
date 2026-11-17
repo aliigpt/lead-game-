@@ -6,7 +6,7 @@ import {
 import { createInput } from "./input.js";
 import { PLAYER, WEAPON, ABILITY, resolveCircle } from "../shared/game.js";
 import {
-  BRAND, PIECES, COMPLETE_LESSON, HALLUCINATION_LESSONS, NAMES,
+  BRAND, PIECES, COMPLETE_LESSON, BOT_TIPS, RESPAWN_TIPS, TOOLS, NAMES,
 } from "../shared/theme.js";
 
 const $ = (id) => document.getElementById(id);
@@ -226,16 +226,19 @@ function onLesson(m) {
       if (me) effects.burst(me.x, me.z, "#ffd23f", 3, 1);
     }
   } else if (m.type === "bot") {
-    const text = HALLUCINATION_LESSONS[m.idx % HALLUCINATION_LESSONS.length];
-    toast({ color: "#ff5a6e", badge: "!", title: `${NAMES.bot} busted +50`, text });
-    learned.add(`<b style="color:#ff5a6e">Hallucinations:</b> ${text}`);
+    const tip = BOT_TIPS[m.idx % BOT_TIPS.length];
+    const tool = TOOLS[tip.tool];
+    toast({ color: tool.color, badge: tool.short, title: `${NAMES.bot} busted +50 · ${tool.label} tip`, text: tip.text });
+    learned.add(learnedLine(tip));
   }
 }
 
 function onDied(m) {
   $("deathBy").textContent = m.by;
-  $("deathTip").textContent = m.tip;
-  learned.add(`<b style="color:#3fd0ff">Tip:</b> ${m.tip}`);
+  const tip = RESPAWN_TIPS[m.tip % RESPAWN_TIPS.length];
+  const tool = TOOLS[tip.tool];
+  $("deathTip").innerHTML = `<span class="tool" style="--c:${tool.color}">${tool.label} tip</span>${esc(tip.text)}`;
+  learned.add(learnedLine(tip));
   show($("death"));
   flash();
   let left = Math.ceil(m.respawn);
@@ -268,6 +271,7 @@ function onRoundEnd(m) {
 }
 
 // ---------- UI helpers ----------
+const learnedLine = (tip) => `<b style="color:${TOOLS[tip.tool].color}">${TOOLS[tip.tool].label}:</b> ${esc(tip.text)}`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 function toast({ color, badge, title, text }, ms = 4200) {

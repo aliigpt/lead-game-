@@ -6,7 +6,7 @@ import {
   PLAYER, WEAPON, ABILITY, BOT, SCORE, PICKUP_RADIUS, PICKUP_RESPAWN,
   SPAWNS, PICKUP_SPOTS, COLORS, resolveCircle, pointBlocked,
 } from "../shared/game.js";
-import { HALLUCINATION_LESSONS, RESPAWN_TIPS, NAMES } from "../shared/theme.js";
+import { BOT_TIPS, RESPAWN_TIPS, NAMES } from "../shared/theme.js";
 
 const FULL_PROMPT = 0b11111;
 // Override for testing: ROUND_SECONDS=20 npm start
@@ -70,7 +70,8 @@ export class ArenaRoom extends Room {
       abilityAt: 0,
       shieldUntil: 0,
       respawnAt: 0,
-      lessonIdx: Math.floor(Math.random() * HALLUCINATION_LESSONS.length),
+      lessonIdx: Math.floor(Math.random() * BOT_TIPS.length),
+      tipIdx: Math.floor(Math.random() * RESPAWN_TIPS.length),
     });
     this.spawnPlayer(client.sessionId, p);
     this.broadcast("feed", { text: `${p.name} joined` }, { except: client });
@@ -346,11 +347,8 @@ export class ArenaRoom extends Room {
     }
     const by = killer ? killer.name : `a ${NAMES.bot}`;
     this.broadcast("feed", { text: `${by} ⟶ ${p.name}` });
-    this.clients.getById(id)?.send("died", {
-      by,
-      tip: RESPAWN_TIPS[Math.floor(Math.random() * RESPAWN_TIPS.length)],
-      respawn: PLAYER.respawn,
-    });
+    if (m) m.tipIdx = (m.tipIdx + 1) % RESPAWN_TIPS.length; // cycle so tips don't repeat
+    this.clients.getById(id)?.send("died", { by, tip: m ? m.tipIdx : 0, respawn: PLAYER.respawn });
   }
 
   killBot(bot, ownerId) {
@@ -363,7 +361,7 @@ export class ArenaRoom extends Room {
     if (!p || !m) return;
     p.bots += 1;
     p.score += SCORE.bot;
-    m.lessonIdx = (m.lessonIdx + 1) % HALLUCINATION_LESSONS.length;
+    m.lessonIdx = (m.lessonIdx + 1) % BOT_TIPS.length;
     this.clients.getById(ownerId)?.send("lesson", { type: "bot", idx: m.lessonIdx });
   }
 
