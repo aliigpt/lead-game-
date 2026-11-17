@@ -1,0 +1,21 @@
+# One-click deploy on Render: New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: prompt-arena
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node server/index.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: TOKEN_SECRET
+        generateValue: true
+      - key: ADMIN_KEY
+        generateValue: true
+      # Free Render instances have no persistent disk, so the leads file is
+      # wiped on every redeploy. Set this to a Google Sheet / Zapier / Make
+      # webhook to keep every signup (see README).
+      - key: LEADS_WEBHOOK_URL
+        sync: false
