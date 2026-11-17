@@ -89,8 +89,8 @@ export const PICKUP_SPOTS = [
 ];
 
 export const COLORS = [
-  "#ff4fd8", "#3fd0ff", "#ffd23f", "#6bff8a",
-  "#ff8a3f", "#b18cff", "#ff5a6e", "#4ff0c8",
+  "#d62976", "#4f5bd5", "#fa7e1e", "#962fbf",
+  "#00a884", "#0095f6", "#ff3040", "#e0a800",
 ];
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
