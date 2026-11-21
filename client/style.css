@@ -226,9 +226,12 @@ body:not(.is-touch) .ability span { font-size: 21px; }
 .ranking li.me .who b { background: var(--yellow); padding: 0 4px; }
 .ranking li .who b::after { content: ""; }
 .learned-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.learned-list li { display: flex; align-items: center; gap: 6px; font-weight: 700; padding: 2px 0; border-bottom: 1px dotted var(--line); }
+.learned-list li { padding: 4px 0 6px; border-bottom: 1px dotted var(--line); }
+.learned-list li .line { display: flex; align-items: center; gap: 6px; font-weight: 900; }
+.learned-list li p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.45; }
 .learned-list li .eq { color: var(--ink-2); }
 .learned-list li .emo { margin-left: auto; }
+.receipt { max-height: none; }
 .thanks { margin: 4px 0 0; text-align: center; font-weight: 900; letter-spacing: 0.3em; }
 .cta { display: grid; gap: 8px; }
 

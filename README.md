@@ -6,14 +6,15 @@ A free 3D multiplayer browser game that teaches AI jargon through @aliigpt's Hon
 
 1. **Map.** A Hong Kong street block: tong lau shops with neon signs (茶餐廳, 涼茶, 電器, 冰室), parked red taxis and green minibuses at 的士站, zebra crossings, and a kiosk holding the 🧠 LLM brain in the middle of a roundabout.
 2. **Terms are the rules.**
-   - Token = 的士咪錶: every shot costs tokens; a taxi meter shows how many you have left.
+   - Token = 的士咪錶: every shot costs tokens; a taxi meter shows how many you have left. At zero you still shoot, just slower.
    - Context window = 書包: your bag holds 3 cards; a 4th pushes the oldest out.
    - Hallucination = 作故仔同事: the enemy bots.
-   - Prompt injection = 電話騙案: fake cards (📞 in the corner, and they shake) that steal a card and flip your controls for 3s.
+   - Prompt injection = 電話騙案: fake cards (📞 in the corner, and they shake) that steal your newest card.
    - LLM = AI 嘅大腦: standing in the zone around the brain scores points.
 3. **Cards give powers while they're in your bag:** LLM +50% damage, API 伙記 heals you, MCP recharges tokens 2x, Agent 私人助理 auto-fires, RAG 開書考試 auto-aims, Skills SOP halves your ability cooldown. Learn all six in a round to become 「AI 術語大師」 (+250).
-4. **Controls.** Move, aim, shoot, plus one ability, 重新生成 Regenerate (dash, heal, short shield). Desktop: WASD, mouse, Space. Phone: twin thumb sticks and a 🔄 button.
-5. **Lead loop.** Email gate before the first match, an invite button in the match, and a cha chaan teng receipt at the end of each round listing what you learned next to a Follow @aliigpt button.
+4. **Controls.** Move, aim, shoot, plus one ability, 重新生成 Regenerate (dash, heal, short shield). Desktop: WASD, mouse, Space. Phone: left thumb moves and shooting is automatic (right thumb to aim yourself), plus a 🔄 button.
+5. **Beginner-friendly.** One bot at the start and one more every 30s, bots ignore you for your first 15s, a yellow arrow points to the nearest card for 20s, dying costs only your newest card, 1.5s respawn, one-line lessons in the fight (full explanations on the receipt).
+6. **Lead loop.** Email gate before the first match, an invite button in the match, and a cha chaan teng receipt at the end of each round listing what you learned next to a Follow @aliigpt button.
 
 ## Stack
 

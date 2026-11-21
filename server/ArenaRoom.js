@@ -4,7 +4,7 @@ import { verifyToken, cleanName } from "./leads.js";
 import {
   ROUND_SECONDS, INTERMISSION_SECONDS, MAX_PLAYERS, TICK_RATE, ARENA,
   PLAYER, WEAPON, ABILITY, BOT, SCORE, PICKUP_RADIUS, PICKUP_RESPAWN,
-  TOKENS, BAG_SIZE, CARD_COUNT, SCAM, ZONE, POWERS,
+  TOKENS, BAG_SIZE, CARD_COUNT, SCAM, ZONE, POWERS, BOT_RAMP, GRACE_SECONDS,
   SPAWNS, PICKUP_SPOTS, COLORS, resolveCircle, pointBlocked,
 } from "../shared/game.js";
 import { BOT_TIPS, ALL_TERMS } from "../shared/theme.js";
@@ -80,6 +80,7 @@ export class ArenaRoom extends Room {
       respawnAt: 0,
       agentAt: 0,
       zoneAcc: 0,
+      graceUntil: Date.now() + GRACE_SECONDS * 1000, // bots leave new players alone
       lessonIdx: Math.floor(Math.random() * BOT_TIPS.length),
       tipIdx: Math.floor(Math.random() * ALL_TERMS.length),
     });
@@ -176,10 +177,11 @@ export class ArenaRoom extends Room {
     const a = num(m?.a);
     if (a === null) return;
     const now = Date.now();
-    if (now - meta.lastShot < WEAPON.cooldown * 1000 * 0.85) return;
-    if (p.tokens < TOKENS.cost) return; // taxi meter says no
+    // Taxi meter empty: you can still shoot, just slower and for free.
+    const empty = p.tokens < TOKENS.cost;
+    if (now - meta.lastShot < WEAPON.cooldown * (empty ? TOKENS.emptyCooldown : 1) * 1000 * 0.85) return;
     meta.lastShot = now;
-    p.tokens -= TOKENS.cost;
+    if (!empty) p.tokens -= TOKENS.cost;
     this.fire(client.sessionId, p, a, m?.cid | 0, false);
   }
 
@@ -320,16 +322,25 @@ export class ArenaRoom extends Room {
   }
 
   updateBots(dt, now) {
+    // Ramp up: one bot at the start, one more every BOT_RAMP.every seconds.
+    const elapsed = ROUND - this.state.timeLeft;
+    const active = Math.min(BOT_COUNT, BOT_RAMP.start + Math.floor(elapsed / BOT_RAMP.every));
+    let i = -1;
     for (const [key, bot] of this.state.bots) {
+      i++;
       const m = this.botMeta.get(key);
+      if (i >= active) {
+        if (bot.alive) bot.alive = false;
+        continue;
+      }
       if (!bot.alive) {
         if (now >= m.respawnAt) this.spawnBot(bot);
         continue;
       }
       let target = null;
       let best = BOT.chaseRange;
-      this.state.players.forEach((p) => {
-        if (!p.alive) return;
+      this.state.players.forEach((p, pid) => {
+        if (!p.alive || now < (this.meta.get(pid)?.graceUntil || 0)) return;
         const d = Math.hypot(p.x - bot.x, p.z - bot.z);
         if (d < best) { best = d; target = p; }
       });
@@ -352,7 +363,7 @@ export class ArenaRoom extends Room {
         bot.z = r.z;
       }
       this.state.players.forEach((p, id) => {
-        if (!p.alive || p.shield) return;
+        if (!p.alive || p.shield || now < (this.meta.get(id)?.graceUntil || 0)) return;
         if (Math.hypot(p.x - bot.x, p.z - bot.z) < BOT.radius + PLAYER.radius + 0.1) {
           this.damagePlayer(id, p, BOT.touchDps * dt, null);
         }
@@ -376,8 +387,8 @@ export class ArenaRoom extends Room {
         const bag = bagOf(p);
 
         if (pk.scam) {
-          // Prompt injection: the "card" was a scam call. Lose a card, controls flip.
-          const lost = bag.length ? bag.splice(Math.floor(Math.random() * bag.length), 1)[0] : -1;
+          // Prompt injection: the "card" was a scam call. It steals your newest card.
+          const lost = bag.length ? bag.pop() : -1;
           p.bag = bag.join(",");
           pk.active = false;
           m.respawnAt = now + PICKUP_RESPAWN * 1000;
@@ -412,7 +423,9 @@ export class ArenaRoom extends Room {
 
     const m = this.meta.get(id);
     p.alive = false;
-    p.bag = "";
+    const bag = bagOf(p);
+    const lostCard = bag.length ? bag.pop() : -1; // dying costs only your newest card
+    p.bag = bag.join(",");
     if (m) m.respawnAt = Date.now() + PLAYER.respawn * 1000;
     const killer = attackerId ? this.state.players.get(attackerId) : null;
     if (killer) {
@@ -423,6 +436,7 @@ export class ArenaRoom extends Room {
     if (m) m.tipIdx = (m.tipIdx + 1) % ALL_TERMS.length; // cycle so terms don't repeat
     this.clients.getById(id)?.send("died", {
       by: killer ? killer.name : "",
+      lost: lostCard,
       tip: m ? m.tipIdx : 0,
       respawn: PLAYER.respawn,
     });
@@ -463,7 +477,10 @@ export class ArenaRoom extends Room {
       p.learned = 0;
       p.bag = "";
       const m = this.meta.get(id);
-      if (m) m.zoneAcc = 0;
+      if (m) {
+        m.zoneAcc = 0;
+        m.graceUntil = Date.now() + GRACE_SECONDS * 1000;
+      }
       this.spawnPlayer(id, p);
     });
     this.state.pickups.forEach((pk) => {

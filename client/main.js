@@ -1,11 +1,12 @@
 import { Client } from "colyseus.js";
 import {
   createWorld, createPlayerMesh, drawPlayerLabel, createBotMesh, createPickupMesh,
-  Bullets, Effects, isTouch, setSceneLang,
+  Bullets, Effects, isTouch, setSceneLang, createGuideArrow,
 } from "./scene.js";
 import { createInput } from "./input.js";
 import {
-  PLAYER, WEAPON, ABILITY, ROUND_SECONDS, TOKENS, BAG_SIZE, CARD_COUNT, ZONE, POWERS, resolveCircle,
+  PLAYER, WEAPON, ABILITY, ROUND_SECONDS, TOKENS, BAG_SIZE, CARD_COUNT, ZONE, POWERS, AUTO_AIM_RANGE,
+  resolveCircle, pointBlocked,
 } from "../shared/game.js";
 import { BRAND, CARDS, RULES, BOT_TIPS, ALL_TERMS, MASTER_LESSON, NAMES } from "../shared/theme.js";
 import { t, L, getLang, setLang, applyStatic } from "./i18n.js";
@@ -148,6 +149,8 @@ const world = createWorld($("stage"));
 const { scene, camera, renderer } = world;
 const bullets = new Bullets(scene);
 const effects = new Effects(scene);
+const guide = createGuideArrow();
+scene.add(guide);
 const input = createInput({
   canvas: renderer.domElement, camera,
   abilityBtn: $("abilityBtn"), joyL: $("joyL"), joyR: $("joyR"),
@@ -168,7 +171,8 @@ let driftFor = 0;
 let learned = new Map();
 let deathTimer = null;
 let roundMax = ROUND_SECONDS;
-let scamUntil = 0;
+let guideUntil = 0;
+const GUIDE_MS = 20000;
 let tokensLocal = TOKENS.max;
 let tokenLessonShown = false;
 let lastHud = "";
@@ -213,7 +217,8 @@ function onJoined() {
   tokenLessonShown = false;
   roundMax = Math.max(1, room.state.timeLeft || ROUND_SECONDS);
   $("meName").textContent = myName;
-  toast({ c: "#c8102e", emo: "🥊", title: t("youreIn"), text: t("youreInText") }, 6000);
+  guideUntil = performance.now() + GUIDE_MS;
+  toast({ c: "#c8102e", emo: "🥊", title: t("youreIn"), text: t(input.state.usingTouch ? "youreInTouch" : "youreInText") }, 6000);
 
   room.onMessage("shot", (m) => {
     if (m.o === room.sessionId && !m.ag) {
@@ -243,6 +248,7 @@ function onJoined() {
     show($("results"), false);
     learned = new Map();
     tokenLessonShown = false;
+    guideUntil = performance.now() + GUIDE_MS;
     bullets.clear();
     roundMax = Math.max(1, room.state.timeLeft || ROUND_SECONDS);
     feed(t("newRound"));
@@ -277,29 +283,28 @@ const termTitle = (term) => `${term.term} = ${L(term.analogy)}`;
 function onLesson(m) {
   if (m.type === "card") {
     const c = CARDS[m.kind];
-    toast({ c: c.color, emo: c.emoji, title: `${termTitle(c)} +10`, text: L(c.explain), power: `${t("cardPower")}${L(c.power)}` });
+    toast({ c: c.color, emo: c.emoji, title: `${termTitle(c)} +10`, text: L(c.short), power: `${t("cardPower")}${L(c.power)}` });
     learn(c);
     if (me) effects.pop(me.x, me.z, c.emoji);
     if (m.dropped >= 0) {
       const d = CARDS[m.dropped];
       setTimeout(() => toast({
         c: RULES.context.color, emo: "🎒", title: t("bagFull", { card: d.term }),
-        text: `${termTitle(RULES.context)}. ${L(RULES.context.explain)}`,
-      }, 5000), 500);
+        text: `${termTitle(RULES.context)}: ${L(RULES.context.short)}`,
+      }, 4500), 500);
       learn(RULES.context);
     }
   } else if (m.type === "master") {
     setTimeout(() => toast({ c: "#ffcc00", emo: "🎓", title: L(MASTER_LESSON.title), text: L(MASTER_LESSON.text) }, 5000), 300);
     if (me) effects.pop(me.x, me.z, "🎓", 8);
   } else if (m.type === "scam") {
-    scamUntil = performance.now() + m.seconds * 1000;
     $("scamFx").classList.add("on");
-    setTimeout(() => $("scamFx").classList.remove("on"), m.seconds * 1000);
-    const lostText = m.lost >= 0 ? t("scamLost", { card: CARDS[m.lost].term, s: m.seconds }) : t("scamNoLoss", { s: m.seconds });
+    setTimeout(() => $("scamFx").classList.remove("on"), 1200);
+    const lostText = m.lost >= 0 ? t("scamLost", { card: CARDS[m.lost].term }) : t("scamNoLoss");
     toast({
-      c: RULES.injection.color, emo: "📞", title: `${t("scamTitle")} ${termTitle(RULES.injection)}`,
-      text: `${lostText} ${L(RULES.injection.explain)}`, power: t("scamTell"),
-    }, 6000);
+      c: RULES.injection.color, emo: "📞", title: lostText,
+      text: `${termTitle(RULES.injection)}: ${L(RULES.injection.short)}`, power: t("scamTell"),
+    }, 5000);
     learn(RULES.injection);
     if (me) effects.pop(me.x, me.z, "📞", 3);
     flash();
@@ -317,8 +322,8 @@ function onFeed(m) {
   else if (m.k === "master") feed(t("masterFeed", { n: m.n }));
 }
 
-function termCardHtml(term) {
-  return `<div class="line">${termLine(term)}</div><p>${esc(L(term.explain))}</p>`;
+function termCardHtml(term, long = false) {
+  return `<div class="line">${termLine(term)}</div><p>${esc(L(long ? term.explain : term.short))}</p>`;
 }
 
 function onDied(m) {
@@ -329,11 +334,12 @@ function onDied(m) {
   show($("death"));
   flash();
   let left = Math.ceil(m.respawn);
-  $("deathCount").textContent = t("lostBag", { n: left });
+  const countText = (n) => (m.lost >= 0 ? t("lostCard", { card: CARDS[m.lost].term, n }) : t("lostBag", { n }));
+  $("deathCount").textContent = countText(left);
   clearInterval(deathTimer);
   deathTimer = setInterval(() => {
     left -= 1;
-    $("deathCount").textContent = t("lostBag", { n: Math.max(0, left) });
+    $("deathCount").textContent = countText(Math.max(0, left));
     if (left <= 0) { clearInterval(deathTimer); show($("death"), false); }
   }, 1000);
 }
@@ -353,7 +359,7 @@ function onRoundEnd(m) {
     </li>`).join("");
   const items = [...learned.values()];
   $("learned").innerHTML = items.length
-    ? items.map((x) => `<li>${termLine(x)}</li>`).join("")
+    ? items.map((x) => `<li><div class="line">${termLine(x)}</div><p>${esc(L(x.explain))}</p></li>`).join("")
     : `<li>${esc(t("nothingLearned"))}</li>`;
   show($("results"));
   let left = m.next;
@@ -475,6 +481,48 @@ function ragAim(a) {
   return best ?? a;
 }
 
+// Nearest enemy within auto-aim range with a clear line of fire, as an angle.
+function clearShot(x, z) {
+  const d = Math.hypot(x - me.x, z - me.z);
+  const n = Math.ceil(d / 0.5);
+  for (let i = 1; i < n; i++) {
+    if (pointBlocked(me.x + ((x - me.x) * i) / n, me.z + ((z - me.z) * i) / n)) return false;
+  }
+  return true;
+}
+function autoTarget() {
+  let best = null, bestD = AUTO_AIM_RANGE;
+  const consider = (x, z) => {
+    const d = Math.hypot(x - me.x, z - me.z);
+    if (d < bestD && clearShot(x, z)) { bestD = d; best = Math.atan2(x - me.x, z - me.z); }
+  };
+  room.state.bots.forEach((b) => b.alive && consider(b.x, b.z));
+  room.state.players.forEach((p, id) => id !== room.sessionId && p.alive && !p.shield && consider(p.x, p.z));
+  return best;
+}
+
+// First 20 seconds: a yellow arrow at your feet points to the nearest real card.
+function updateGuide(time) {
+  const p = room.state.players.get(room.sessionId);
+  let target = null;
+  if (me && p?.alive && performance.now() < guideUntil && room.state.phase === "playing") {
+    const bag = bagOf(p);
+    let bestD = Infinity;
+    room.state.pickups.forEach((pk) => {
+      if (!pk.active || pk.scam || bag.includes(pk.kind)) return;
+      const d = Math.hypot(pk.x - me.x, pk.z - me.z);
+      if (d < bestD) { bestD = d; target = pk; }
+    });
+    if (bestD < 1.5) target = null;
+  }
+  guide.visible = !!target;
+  if (!target) return;
+  const a = Math.atan2(target.x - me.x, target.z - me.z);
+  const r = 1.7 + Math.sin(time * 6) * 0.15;
+  guide.position.set(me.x + Math.sin(a) * r, 0.08, me.z + Math.cos(a) * r);
+  guide.rotation.y = a;
+}
+
 function updateMe(p, v, dt) {
   if (!me || v.seq !== p.spawnSeq) {
     me = { x: p.x, z: p.z, a: p.a };
@@ -495,8 +543,7 @@ function updateMe(p, v, dt) {
   abilityCdMs = ABILITY.cooldown * 1000 * (bag.includes(CARD.skills) ? POWERS.skillsCooldown : 1);
 
   if (playing) {
-    let mx = inp.moveX, mz = inp.moveZ;
-    if (now < scamUntil) { mx = -mx; mz = -mz; } // phone scam: controls flipped
+    const mx = inp.moveX, mz = inp.moveZ;
     if (inp.abilityPressed && now >= abilityReadyAt) {
       abilityReadyAt = now + abilityCdMs;
       const dir = Math.hypot(mx, mz) > 0.1 ? Math.atan2(mx, mz) : me.a;
@@ -515,22 +562,30 @@ function updateMe(p, v, dt) {
       me.x = r.x; me.z = r.z;
     }
 
-    if (inp.firing && now - lastShotAt >= WEAPON.cooldown * 1000) {
-      if (tokensLocal >= TOKENS.cost) {
-        lastShotAt = now;
-        tokensLocal -= TOKENS.cost;
-        if (bag.includes(CARD.rag)) me.a = ragAim(me.a);
-        const cid = (shotSeq = (shotSeq + 1) % 1e6);
-        const ox = me.x + Math.sin(me.a) * (PLAYER.radius + 0.25);
-        const oz = me.z + Math.cos(me.a) * (PLAYER.radius + 0.25);
-        myShots.set(cid, bullets.spawn(ox, oz, me.a, p.color));
-        if (myShots.size > 40) myShots.delete(myShots.keys().next().value);
-        room.send("shoot", { a: me.a, cid });
-      } else if (!tokenLessonShown) {
+    // Phones: if you're not aiming with the right thumb, auto-shoot at the
+    // nearest enemy in range and in sight.
+    let firing = inp.firing;
+    if (input.state.usingTouch && !firing) {
+      const a = autoTarget();
+      if (a !== null) { me.a = a; firing = true; }
+    }
+    const empty = tokensLocal < TOKENS.cost;
+    const cooldown = WEAPON.cooldown * (empty ? TOKENS.emptyCooldown : 1) * 1000;
+    if (firing && now - lastShotAt >= cooldown) {
+      lastShotAt = now;
+      if (empty && !tokenLessonShown) {
         tokenLessonShown = true;
-        toast({ c: RULES.token.color, emo: "🚕", title: `${t("noTokens")} ${termTitle(RULES.token)}`, text: L(RULES.token.explain) }, 5000);
+        toast({ c: RULES.token.color, emo: "🚕", title: `${t("noTokens")} ${termTitle(RULES.token)}`, text: L(RULES.token.short) }, 4500);
         learn(RULES.token);
       }
+      if (!empty) tokensLocal -= TOKENS.cost;
+      if (bag.includes(CARD.rag)) me.a = ragAim(me.a);
+      const cid = (shotSeq = (shotSeq + 1) % 1e6);
+      const ox = me.x + Math.sin(me.a) * (PLAYER.radius + 0.25);
+      const oz = me.z + Math.cos(me.a) * (PLAYER.radius + 0.25);
+      myShots.set(cid, bullets.spawn(ox, oz, me.a, p.color));
+      if (myShots.size > 40) myShots.delete(myShots.keys().next().value);
+      room.send("shoot", { a: me.a, cid });
     }
 
     const err = Math.hypot(p.x - me.x, p.z - me.z);
@@ -659,6 +714,7 @@ function frame(now) {
     syncPlayers(dt, time);
     syncBots(dt, time);
     syncPickups(time);
+    updateGuide(time);
     updateHud();
   } else {
     idleSpin += dt * 0.12; // slow drift behind the menu

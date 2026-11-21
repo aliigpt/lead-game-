@@ -684,6 +684,37 @@ export function setSceneLang(lang, pickupViews = []) {
   for (const v of pickupViews) v.refresh(v.scam);
 }
 
+// ---------- guide arrow (first seconds of a round) ----------
+
+export function createGuideArrow() {
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0.75);
+  shape.lineTo(0.55, 0);
+  shape.lineTo(0.2, 0);
+  shape.lineTo(0.2, -0.5);
+  shape.lineTo(-0.2, -0.5);
+  shape.lineTo(-0.2, 0);
+  shape.lineTo(-0.55, 0);
+  shape.closePath();
+  const g = new THREE.Group();
+  const outline = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: "#1b1b1b", depthTest: false }));
+  outline.scale.setScalar(1.25);
+  const fill = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: "#ffcc00", depthTest: false }));
+  fill.position.z = 0.001;
+  for (const m of [outline, fill]) {
+    m.rotation.x = -Math.PI / 2; // lie flat, tip pointing along +z after the group turns
+    m.renderOrder = 5;
+  }
+  outline.position.y = -0.01;
+  // shape points along +y; after lying flat that's -z, so flip to face +z
+  const holder = new THREE.Group();
+  holder.add(outline, fill);
+  holder.rotation.y = Math.PI;
+  g.add(holder);
+  g.visible = false;
+  return g;
+}
+
 // ---------- bullets + effects ----------
 
 const bulletGeo = new THREE.SphereGeometry(WEAPON.radius * 1.5, 10, 8);

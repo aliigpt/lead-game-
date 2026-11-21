@@ -12,7 +12,7 @@ export const PLAYER = {
   radius: 0.6,
   speed: 7.5,
   maxHp: 100,
-  respawn: 2.5,
+  respawn: 1.5,
 };
 
 export const WEAPON = {
@@ -34,10 +34,10 @@ export const ABILITY = {
 export const BOT = {
   count: 4,
   radius: 0.8,
-  hp: 40,
-  speed: 3.6,
-  chaseRange: 12,
-  touchDps: 16,
+  hp: 30,
+  speed: 3.0,
+  chaseRange: 11,
+  touchDps: 12,
   respawn: 6,
 };
 
@@ -49,7 +49,14 @@ export const SCORE = {
 };
 
 // Token = taxi meter: every shot costs tokens, the meter refills over time.
-export const TOKENS = { max: 20, refill: 4, cost: 1 };
+// At 0 tokens you can still shoot, just slower (emptyCooldown x the normal rate).
+export const TOKENS = { max: 20, refill: 4, cost: 1, emptyCooldown: 3 };
+// Bots ramp up: `start` at the beginning, one more every `every` seconds.
+export const BOT_RAMP = { start: 1, every: 30 };
+// New players are ignored by bots for this long after joining or a new round.
+export const GRACE_SECONDS = 15;
+// Auto-shoot (phones): fires at the nearest enemy in range and in sight.
+export const AUTO_AIM_RANGE = 13;
 // Context window = schoolbag: holds this many cards, oldest falls out.
 export const BAG_SIZE = 3;
 export const CARD_COUNT = 6;
@@ -69,7 +76,7 @@ export const POWERS = {
   skillsCooldown: 0.5,
 };
 
-export const PICKUP_RADIUS = 1.3;
+export const PICKUP_RADIUS = 1.8;
 export const PICKUP_RESPAWN = 8;
 
 // Map: a Hong Kong street block. Boxes are centered at (x, z) with

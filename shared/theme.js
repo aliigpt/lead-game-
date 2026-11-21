@@ -23,6 +23,7 @@ export const CARDS = [
   {
     key: "llm", term: "LLM", emoji: "🧠", color: "#e4572e",
     analogy: { zh: "AI 嘅大腦", en: "the AI's brain" },
+    short: { zh: "ChatGPT、Claude、Gemini 背後嗰個腦。", en: "The brain behind ChatGPT, Claude and Gemini." },
     explain: {
       zh: "大型語言模型，即係 ChatGPT、Claude、Gemini 背後嗰個大腦。睇過海量文字，學識估下一個字。",
       en: "The large language model behind ChatGPT, Claude and Gemini. It read a huge amount of text and learned to predict the next word.",
@@ -32,6 +33,7 @@ export const CARDS = [
   {
     key: "api", term: "API", emoji: "🧋", color: "#b5763a",
     analogy: { zh: "茶餐廳伙記", en: "the cha chaan teng waiter" },
+    short: { zh: "你落單，佢幫你同廚房（AI）傳話。", en: "You order, it carries the order to the kitchen (the AI)." },
     explain: {
       zh: "你同廚房之間嘅伙記：你落單，佢幫你攞返嚟。App 就係透過 API 叫 AI 做嘢。",
       en: "The waiter between you and the kitchen: you order, they bring it back. Apps use an API to ask the AI for things.",
@@ -41,6 +43,7 @@ export const CARDS = [
   {
     key: "mcp", term: "MCP", emoji: "🔌", color: "#2a9d8f",
     analogy: { zh: "AI 嘅 USB-C", en: "USB-C for AI" },
+    short: { zh: "一個插頭，AI 就駁到你啲工具。", en: "One plug, and AI connects to your tools." },
     explain: {
       zh: "一個統一插頭，AI 一插就用到 Gmail、Notion、Google Drive 呢啲工具。",
       en: "One standard plug, so AI can connect to tools like Gmail, Notion or Google Drive.",
@@ -50,6 +53,7 @@ export const CARDS = [
   {
     key: "agent", term: "Agent", emoji: "🧑‍💼", color: "#3a6ea5",
     analogy: { zh: "私人助理", en: "a personal assistant" },
+    short: { zh: "唔止答你，仲會幫你做埋件事。", en: "It doesn't just answer. It does the job for you." },
     explain: {
       zh: "唔止答你問題，仲會自己諗步驟、用工具，幫你做完成件事。",
       en: "It doesn't just answer. It plans the steps, uses tools and finishes the job for you.",
@@ -59,6 +63,7 @@ export const CARDS = [
   {
     key: "rag", term: "RAG", emoji: "📖", color: "#6a4c93",
     analogy: { zh: "開書考試", en: "an open-book exam" },
+    short: { zh: "先翻資料再答，少啲作故仔。", en: "It checks your documents before answering." },
     explain: {
       zh: "AI 答之前，先翻查你畀佢嘅資料，唔使靠記憶，少啲作故仔。",
       en: "Before answering, the AI looks things up in your documents instead of relying on memory. Fewer made-up answers.",
@@ -68,6 +73,7 @@ export const CARDS = [
   {
     key: "skills", term: "Skills", emoji: "📋", color: "#1f7a4d",
     analogy: { zh: "SOP 手冊", en: "an SOP manual" },
+    short: { zh: "預先寫好嘅做法，次次一樣穩陣。", en: "A written how-to, so it's consistent every time." },
     explain: {
       zh: "預先寫好嘅做法。AI 做嗰類工作就跟住手冊做，次次都一樣咁穩陣。",
       en: "Pre-written how-tos. When the AI does that kind of job it follows the manual, consistent every time.",
@@ -81,6 +87,7 @@ export const RULES = {
   token: {
     term: "Token", emoji: "🚕", color: "#c8102e",
     analogy: { zh: "的士咪錶", en: "a taxi meter" },
+    short: { zh: "你打嘅字、佢答嘅字都計錢。", en: "Every word in and out is metered." },
     explain: {
       zh: "AI 計數嘅單位。你打嘅字、佢答嘅字都計錢，好似的士咪錶咁一路跳。",
       en: "The unit AI counts in. Every word you send and get back is metered, like a taxi meter ticking.",
@@ -89,6 +96,7 @@ export const RULES = {
   context: {
     term: "Context window", emoji: "🎒", color: "#d17a00",
     analogy: { zh: "書包", en: "a schoolbag" },
+    short: { zh: "記得嘅嘢有上限，滿咗最舊嗰啲跌出嚟。", en: "It can only hold so much. Old stuff falls out." },
     explain: {
       zh: "AI 一次過記得幾多嘢係有上限嘅。書包滿咗，最舊嗰啲就會跌咗出嚟。",
       en: "AI can only hold so much at once. When the bag is full, the oldest stuff falls out.",
@@ -97,6 +105,7 @@ export const RULES = {
   hallucination: {
     term: "Hallucination", emoji: "🤥", color: "#5b3a70",
     analogy: { zh: "作故仔同事", en: "the coworker who makes stuff up" },
+    short: { zh: "好有自信咁作嘢出嚟，記住核實。", en: "It confidently makes things up. Double-check." },
     explain: {
       zh: "AI 有時會好有自信咁作啲嘢出嚟，好似個作故仔同事。重要資料要自己核實。",
       en: "Sometimes AI confidently makes things up, like a coworker who invents stories. Double-check anything important.",
@@ -105,6 +114,7 @@ export const RULES = {
   injection: {
     term: "Prompt injection", emoji: "📞", color: "#8a1c1c",
     analogy: { zh: "電話騙案", en: "a phone scam" },
+    short: { zh: "有人收埋指令，呃 AI 跟佢做嘢。", en: "Hidden instructions trick the AI into obeying." },
     explain: {
       zh: "有人將隱藏指令收埋喺網頁或者文件入面，呃 AI 跟佢做嘢，好似電話騙案咁。",
       en: "Someone hides instructions in a web page or file to trick the AI into obeying them, like a phone scam.",

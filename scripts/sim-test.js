@@ -69,6 +69,15 @@ check("tag scores +100", !me(B).alive && me(A).kills === 1 && me(A).score === 10
 const t0 = me(A).tokens;
 for (let i = 0; i < 30; i++) { A.send("shoot", { a: 0, cid: 100 + i }); await sleep(180); }
 check("tokens drain when shooting", me(A).tokens < t0 - 5, `${t0.toFixed(1)} -> ${me(A).tokens.toFixed(1)}`);
+// At zero tokens you can still shoot, just slower
+let emptyShots = 0;
+const countShot = (m) => { if (m.o === A.sessionId && !m.ag) emptyShots++; };
+A.onMessage("shot", countShot);
+for (let i = 0; i < 400 && me(A).tokens >= 1; i++) { A.send("shoot", { a: 0, cid: 200 + i }); await sleep(60); }
+const drained = me(A).tokens < 1;
+emptyShots = 0;
+for (let i = 0; i < 30; i++) { A.send("shoot", { a: 0, cid: 300 + i }); await sleep(100); }
+check("empty meter never blocks shooting", drained && emptyShots >= 3, `${emptyShots} shots in 3s starting from 0 tokens`);
 
 // Cards: LLM, API, MCP, then Agent overflows the 3-slot bag
 await walk(A, -6, -20); await walk(A, -6, -12);
@@ -81,6 +90,17 @@ check("4th card pushes the oldest out", me(A).bag === "1,2,3", `bag "${me(A).bag
 const dropped = log.find((e) => e.n === "A" && e.t === "lesson" && e.m.type === "card" && e.m.dropped === 0);
 check("client is told which card fell out", !!dropped);
 check("learned bitmask tracks all 4 cards", me(A).learned === 0b1111, `learned ${me(A).learned.toString(2)}`);
+
+// Dying costs only your newest card
+await walk(B, me(A).x + 3, me(A).z);
+for (let i = 0; i < 25 && me(A).alive; i++) {
+  B.send("shoot", { a: Math.atan2(me(A).x - me(B).x, me(A).z - me(B).z), cid: 500 + i });
+  await sleep(230);
+}
+check("death drops only the newest card", !me(A).alive && me(A).bag === "1,2", `bag "${me(A).bag}"`);
+await sleep(1800);
+check("respawn in about 1.5s", me(A).alive);
+await walk(A, -9, 0);
 
 // Agent card: assistant auto-fires when an enemy is in range
 const shotsBefore = log.length;
