@@ -1,7 +1,7 @@
 # One-click deploy on Render: New > Blueprint > pick this repo.
 services:
   - type: web
-    name: prompt-arena
+    name: ai-jargon-brawl
     runtime: node
     plan: free
     buildCommand: npm ci --include=dev && npm run build

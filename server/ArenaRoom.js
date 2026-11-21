@@ -4,16 +4,23 @@ import { verifyToken, cleanName } from "./leads.js";
 import {
   ROUND_SECONDS, INTERMISSION_SECONDS, MAX_PLAYERS, TICK_RATE, ARENA,
   PLAYER, WEAPON, ABILITY, BOT, SCORE, PICKUP_RADIUS, PICKUP_RESPAWN,
+  TOKENS, BAG_SIZE, CARD_COUNT, SCAM, ZONE, POWERS,
   SPAWNS, PICKUP_SPOTS, COLORS, resolveCircle, pointBlocked,
 } from "../shared/game.js";
-import { BOT_TIPS, RESPAWN_TIPS, NAMES } from "../shared/theme.js";
+import { BOT_TIPS, ALL_TERMS } from "../shared/theme.js";
 
-const FULL_PROMPT = 0b11111;
-// Override for testing: ROUND_SECONDS=20 npm start
+const ALL_CARDS = (1 << CARD_COUNT) - 1;
+const CARD = { llm: 0, api: 1, mcp: 2, agent: 3, rag: 4, skills: 5 };
+// Overrides for testing: ROUND_SECONDS=20 BOTS=0 SCAM_CHANCE=0 npm start
 const ROUND = Number(process.env.ROUND_SECONDS) || ROUND_SECONDS;
 const BOT_COUNT = process.env.BOTS !== undefined ? Number(process.env.BOTS) : BOT.count;
+const SCAM_CHANCE = process.env.SCAM_CHANCE !== undefined ? Number(process.env.SCAM_CHANCE) : SCAM.chance;
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+
+// The bag (context window) is stored as "2,0,5": card indices, oldest first.
+const bagOf = (p) => (p.bag ? p.bag.split(",").map(Number) : []);
+const hasCard = (p, card) => bagOf(p).includes(card);
 
 export class ArenaRoom extends Room {
   maxClients = MAX_PLAYERS;
@@ -32,6 +39,7 @@ export class ArenaRoom extends Room {
       p.x = s.x;
       p.z = s.z;
       p.kind = s.kind;
+      p.scam = Math.random() < SCAM_CHANCE;
       this.state.pickups.set(`p${i}`, p);
       this.pickupMeta.set(`p${i}`, { respawnAt: 0 });
     });
@@ -70,16 +78,18 @@ export class ArenaRoom extends Room {
       abilityAt: 0,
       shieldUntil: 0,
       respawnAt: 0,
+      agentAt: 0,
+      zoneAcc: 0,
       lessonIdx: Math.floor(Math.random() * BOT_TIPS.length),
-      tipIdx: Math.floor(Math.random() * RESPAWN_TIPS.length),
+      tipIdx: Math.floor(Math.random() * ALL_TERMS.length),
     });
     this.spawnPlayer(client.sessionId, p);
-    this.broadcast("feed", { text: `${p.name} joined` }, { except: client });
+    this.broadcast("feed", { k: "join", n: p.name }, { except: client });
   }
 
   onLeave(client) {
     const p = this.state.players.get(client.sessionId);
-    if (p) this.broadcast("feed", { text: `${p.name} left` });
+    if (p) this.broadcast("feed", { k: "left", n: p.name });
     this.state.players.delete(client.sessionId);
     this.meta.delete(client.sessionId);
   }
@@ -100,6 +110,7 @@ export class ArenaRoom extends Room {
     p.z = best.z;
     p.a = Math.atan2(-best.x, -best.z);
     p.hp = PLAYER.maxHp;
+    p.tokens = TOKENS.max;
     p.alive = true;
     p.spawnSeq = (p.spawnSeq + 1) % 65535;
     const m = this.meta.get(id);
@@ -166,20 +177,27 @@ export class ArenaRoom extends Room {
     if (a === null) return;
     const now = Date.now();
     if (now - meta.lastShot < WEAPON.cooldown * 1000 * 0.85) return;
+    if (p.tokens < TOKENS.cost) return; // taxi meter says no
     meta.lastShot = now;
+    p.tokens -= TOKENS.cost;
+    this.fire(client.sessionId, p, a, m?.cid | 0, false);
+  }
+
+  fire(ownerId, p, a, cid, agent) {
     const dirX = Math.sin(a), dirZ = Math.cos(a);
     const id = ++this.bulletSeq;
     const b = {
       id,
-      owner: client.sessionId,
+      owner: ownerId,
       x: p.x + dirX * (PLAYER.radius + 0.25),
       z: p.z + dirZ * (PLAYER.radius + 0.25),
       vx: dirX * WEAPON.speed,
       vz: dirZ * WEAPON.speed,
       left: WEAPON.range,
+      dmg: WEAPON.damage * (hasCard(p, CARD.llm) ? POWERS.llmDamage : 1) * (agent ? 0.6 : 1),
     };
     this.bullets.set(id, b);
-    this.broadcast("shot", { id, o: client.sessionId, cid: m?.cid | 0, x: b.x, z: b.z, a });
+    this.broadcast("shot", { id, o: ownerId, cid, x: b.x, z: b.z, a, ag: agent ? 1 : 0 });
   }
 
   handleAbility(client) {
@@ -188,7 +206,8 @@ export class ArenaRoom extends Room {
     if (!p || !meta || !p.alive || this.state.phase !== "playing") return;
     const now = Date.now();
     if (now < meta.abilityAt) return;
-    meta.abilityAt = now + ABILITY.cooldown * 1000 * 0.9;
+    const cd = ABILITY.cooldown * (hasCard(p, CARD.skills) ? POWERS.skillsCooldown : 1);
+    meta.abilityAt = now + cd * 1000 * 0.9;
     meta.dashBonus = ABILITY.dashDistance + 0.5;
     meta.budget += ABILITY.dashDistance + 0.5;
     meta.shieldUntil = Math.max(meta.shieldUntil, now + ABILITY.shield * 1000);
@@ -207,18 +226,61 @@ export class ArenaRoom extends Room {
     this.state.timeLeft = Math.max(0, this.state.timeLeft - dt);
     if (this.state.timeLeft <= 0) return this.endRound();
 
-    // players: respawn + shield flag
     this.state.players.forEach((p, id) => {
       const m = this.meta.get(id);
       if (!m) return;
-      if (!p.alive && now >= m.respawnAt) this.spawnPlayer(id, p);
+      if (!p.alive) {
+        if (now >= m.respawnAt) this.spawnPlayer(id, p);
+        return;
+      }
       const sh = now < m.shieldUntil;
       if (p.shield !== sh) p.shield = sh;
+
+      // Token meter refills (MCP card plugs you in: faster)
+      if (p.tokens < TOKENS.max) {
+        const rate = TOKENS.refill * (hasCard(p, CARD.mcp) ? POWERS.mcpRefill : 1);
+        p.tokens = Math.min(TOKENS.max, Math.round((p.tokens + rate * dt) * 100) / 100);
+      }
+      // API card: the waiter brings food
+      if (hasCard(p, CARD.api) && p.hp < PLAYER.maxHp) p.hp = Math.min(PLAYER.maxHp, p.hp + POWERS.apiHeal * dt);
+      // Agent card: your assistant fires at the nearest enemy
+      if (hasCard(p, CARD.agent) && now >= m.agentAt) {
+        const t = this.nearestEnemy(id, p, POWERS.agentRange);
+        if (t) {
+          this.fire(id, p, Math.atan2(t.x - p.x, t.z - p.z), 0, true);
+          m.agentAt = now + POWERS.agentInterval * 1000;
+        }
+      }
+      // LLM zone: standing near the brain scores points
+      if (Math.hypot(p.x, p.z) <= ZONE.radius) {
+        m.zoneAcc += ZONE.pps * dt;
+        if (m.zoneAcc >= 1) {
+          const whole = Math.floor(m.zoneAcc);
+          p.score += whole;
+          m.zoneAcc -= whole;
+        }
+      }
     });
 
     this.updateBullets(dt);
     this.updateBots(dt, now);
     this.updatePickups(now);
+  }
+
+  nearestEnemy(id, p, range) {
+    let best = null;
+    let bestD = range;
+    for (const [, bot] of this.state.bots) {
+      if (!bot.alive) continue;
+      const d = Math.hypot(bot.x - p.x, bot.z - p.z);
+      if (d < bestD) { bestD = d; best = bot; }
+    }
+    for (const [oid, o] of this.state.players) {
+      if (oid === id || !o.alive) continue;
+      const d = Math.hypot(o.x - p.x, o.z - p.z);
+      if (d < bestD) { bestD = d; best = o; }
+    }
+    return best;
   }
 
   updateBullets(dt) {
@@ -231,23 +293,21 @@ export class ArenaRoom extends Room {
         b.z += (b.vz * dt) / n;
         b.left -= step / n;
         if (b.left <= 0 || pointBlocked(b.x, b.z)) { dead = true; break; }
-        // bots
         for (const [, bot] of this.state.bots) {
           if (!bot.alive) continue;
           if (Math.hypot(bot.x - b.x, bot.z - b.z) < BOT.radius + WEAPON.radius) {
             dead = true;
-            bot.hp -= WEAPON.damage;
+            bot.hp -= b.dmg;
             if (bot.hp <= 0) this.killBot(bot, b.owner);
             break;
           }
         }
         if (dead) break;
-        // players
         for (const [id, p] of this.state.players) {
           if (id === b.owner || !p.alive) continue;
           if (Math.hypot(p.x - b.x, p.z - b.z) < PLAYER.radius + WEAPON.radius) {
             dead = true;
-            if (!p.shield) this.damagePlayer(id, p, WEAPON.damage, b.owner);
+            if (!p.shield) this.damagePlayer(id, p, b.dmg, b.owner);
             break;
           }
         }
@@ -291,7 +351,6 @@ export class ArenaRoom extends Room {
         bot.x = r.x;
         bot.z = r.z;
       }
-      // contact damage
       this.state.players.forEach((p, id) => {
         if (!p.alive || p.shield) return;
         if (Math.hypot(p.x - bot.x, p.z - bot.z) < BOT.radius + PLAYER.radius + 0.1) {
@@ -305,26 +364,42 @@ export class ArenaRoom extends Room {
     for (const [key, pk] of this.state.pickups) {
       const m = this.pickupMeta.get(key);
       if (!pk.active) {
-        if (now >= m.respawnAt) pk.active = true;
+        if (now >= m.respawnAt) {
+          pk.scam = Math.random() < SCAM_CHANCE;
+          pk.active = true;
+        }
         continue;
       }
-      const bit = 1 << pk.kind;
       for (const [id, p] of this.state.players) {
-        if (!p.alive || p.pieces & bit) continue;
-        if (Math.hypot(p.x - pk.x, p.z - pk.z) > PICKUP_RADIUS) continue;
+        if (!p.alive || Math.hypot(p.x - pk.x, p.z - pk.z) > PICKUP_RADIUS) continue;
+        const client = this.clients.getById(id);
+        const bag = bagOf(p);
+
+        if (pk.scam) {
+          // Prompt injection: the "card" was a scam call. Lose a card, controls flip.
+          const lost = bag.length ? bag.splice(Math.floor(Math.random() * bag.length), 1)[0] : -1;
+          p.bag = bag.join(",");
+          pk.active = false;
+          m.respawnAt = now + PICKUP_RESPAWN * 1000;
+          client?.send("lesson", { type: "scam", lost, seconds: SCAM.seconds });
+          break;
+        }
+        if (bag.includes(pk.kind)) continue; // already holding it: leave it for others
+
+        bag.push(pk.kind);
+        const dropped = bag.length > BAG_SIZE ? bag.shift() : -1; // context window overflow
+        p.bag = bag.join(",");
+        p.score += SCORE.card;
+        p.learned |= 1 << pk.kind;
         pk.active = false;
         m.respawnAt = now + PICKUP_RESPAWN * 1000;
-        p.pieces |= bit;
-        p.score += SCORE.piece;
-        const client = this.clients.getById(id);
-        if (p.pieces === FULL_PROMPT) {
-          p.pieces = 0;
-          p.prompts += 1;
-          p.score += SCORE.complete;
-          client?.send("lesson", { type: "complete", kind: pk.kind });
-          this.broadcast("feed", { text: `${p.name} built a full prompt!` }, { except: client });
-        } else {
-          client?.send("lesson", { type: "piece", kind: pk.kind });
+        client?.send("lesson", { type: "card", kind: pk.kind, dropped });
+        if (p.learned === ALL_CARDS) {
+          p.learned = 0;
+          p.masters += 1;
+          p.score += SCORE.master;
+          client?.send("lesson", { type: "master" });
+          this.broadcast("feed", { k: "master", n: p.name }, { except: client });
         }
         break;
       }
@@ -333,22 +408,24 @@ export class ArenaRoom extends Room {
 
   damagePlayer(id, p, amount, attackerId) {
     p.hp = Math.max(0, p.hp - amount);
-    const m = this.meta.get(id);
-    if (m) m.lastAttacker = attackerId;
     if (p.hp > 0) return;
 
+    const m = this.meta.get(id);
     p.alive = false;
-    p.pieces = 0;
+    p.bag = "";
     if (m) m.respawnAt = Date.now() + PLAYER.respawn * 1000;
     const killer = attackerId ? this.state.players.get(attackerId) : null;
     if (killer) {
       killer.kills += 1;
       killer.score += SCORE.kill;
     }
-    const by = killer ? killer.name : `a ${NAMES.bot}`;
-    this.broadcast("feed", { text: `${by} ⟶ ${p.name}` });
-    if (m) m.tipIdx = (m.tipIdx + 1) % RESPAWN_TIPS.length; // cycle so tips don't repeat
-    this.clients.getById(id)?.send("died", { by, tip: m ? m.tipIdx : 0, respawn: PLAYER.respawn });
+    this.broadcast("feed", { k: "kill", a: killer ? killer.name : "", v: p.name });
+    if (m) m.tipIdx = (m.tipIdx + 1) % ALL_TERMS.length; // cycle so terms don't repeat
+    this.clients.getById(id)?.send("died", {
+      by: killer ? killer.name : "",
+      tip: m ? m.tipIdx : 0,
+      respawn: PLAYER.respawn,
+    });
   }
 
   killBot(bot, ownerId) {
@@ -382,11 +459,17 @@ export class ArenaRoom extends Room {
       p.score = 0;
       p.kills = 0;
       p.bots = 0;
-      p.prompts = 0;
-      p.pieces = 0;
+      p.masters = 0;
+      p.learned = 0;
+      p.bag = "";
+      const m = this.meta.get(id);
+      if (m) m.zoneAcc = 0;
       this.spawnPlayer(id, p);
     });
-    this.state.pickups.forEach((pk) => (pk.active = true));
+    this.state.pickups.forEach((pk) => {
+      pk.scam = Math.random() < SCAM_CHANCE;
+      pk.active = true;
+    });
     this.state.bots.forEach((b) => this.spawnBot(b));
     this.broadcast("roundStart", { round: this.state.round });
   }

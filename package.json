@@ -1,9 +1,9 @@
 {
-  "name": "prompt-arena",
+  "name": "ai-jargon-brawl",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Prompt Arena: a 3D multiplayer browser game by @aliigpt that teaches prompting.",
+  "description": "AI Jargon Brawl: a 3D multiplayer browser game by @aliigpt that teaches AI jargon.",
   "scripts": {
     "dev": "node scripts/dev.js",
     "dev:server": "node --watch server/index.js",

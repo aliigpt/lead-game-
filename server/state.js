@@ -13,8 +13,10 @@ export class Player extends Schema {
     this.score = 0;
     this.kills = 0;
     this.bots = 0;
-    this.prompts = 0; // full prompts built
-    this.pieces = 0; // bitmask of collected prompt pieces
+    this.masters = 0; // times all six cards were learned this round
+    this.learned = 0; // bitmask of cards learned toward the next "master"
+    this.bag = ""; // comma-separated card indices, oldest first (the context window)
+    this.tokens = 20; // taxi meter: ammo
     this.shield = false; // spawn protection / Regenerate shield
     this.spawnSeq = 0; // bumps on every (re)spawn so clients can snap
   }
@@ -30,8 +32,10 @@ defineTypes(Player, {
   score: "number",
   kills: "number",
   bots: "number",
-  prompts: "number",
-  pieces: "uint8",
+  masters: "number",
+  learned: "uint8",
+  bag: "string",
+  tokens: "number",
   shield: "boolean",
   spawnSeq: "uint16",
 });
@@ -54,9 +58,10 @@ export class Pickup extends Schema {
     this.z = 0;
     this.kind = 0;
     this.active = true;
+    this.scam = false; // prompt injection: looks like a card, isn't
   }
 }
-defineTypes(Pickup, { x: "number", z: "number", kind: "uint8", active: "boolean" });
+defineTypes(Pickup, { x: "number", z: "number", kind: "uint8", active: "boolean", scam: "boolean" });
 
 export class ArenaState extends Schema {
   constructor() {

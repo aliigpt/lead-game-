@@ -1,21 +1,26 @@
-# Prompt Arena by @aliigpt
+# AI 術語大亂鬥 · AI Jargon Brawl by @aliigpt
 
-A free 3D multiplayer browser game that teaches AI prompting. It runs on phone and desktop with no download. Players share a link and land in the same match. Rounds last 2:30.
+A free 3D multiplayer browser game that teaches AI jargon through @aliigpt's Hong Kong analogies. It runs on phone and desktop with no download, in Cantonese with an English toggle. Players share a link and land in the same match. Rounds last 2:30.
 
 ## Design
 
-1. **Theme.** You're a prompt engineer inside an AI data center. The map is a circuit-board floor with GPU towers, server racks and a glowing AI core in the middle.
-2. **Learn by collecting.** Five prompt pieces float around the map: **R**ole, **C**ontext, **T**ask, **F**ormat, **E**xample. Each pickup shows a one-line lesson. Collect all five and you've built a full prompt worth +250. Die and you lose the pieces you're holding.
-3. **Enemies teach too.** Red "Hallucination" bots chase players. Destroying one (+50) shows a tip for getting trustworthy answers. Tagging another player is worth +100, and the respawn screen shows a ChatGPT, Claude or Gemini feature tip. Every tip is labeled with its tool.
-4. **Controls.** Move, aim, shoot, plus one ability, **Regenerate**: a dash that heals 25 and gives a short shield. On desktop it's WASD, the mouse and Space. On a phone it's twin thumb sticks and a ⚡ button.
-5. **Growth loop.** An email gate comes before the first match. Inside the match there's an "Invite" link, and the end-of-round screen recaps "What you learned" next to a "Follow @aliigpt" button.
+1. **Map.** A Hong Kong street block: tong lau shops with neon signs (茶餐廳, 涼茶, 電器, 冰室), parked red taxis and green minibuses at 的士站, zebra crossings, and a kiosk holding the 🧠 LLM brain in the middle of a roundabout.
+2. **Terms are the rules.**
+   - Token = 的士咪錶: every shot costs tokens; a taxi meter shows how many you have left.
+   - Context window = 書包: your bag holds 3 cards; a 4th pushes the oldest out.
+   - Hallucination = 作故仔同事: the enemy bots.
+   - Prompt injection = 電話騙案: fake cards (📞 in the corner, and they shake) that steal a card and flip your controls for 3s.
+   - LLM = AI 嘅大腦: standing in the zone around the brain scores points.
+3. **Cards give powers while they're in your bag:** LLM +50% damage, API 伙記 heals you, MCP recharges tokens 2x, Agent 私人助理 auto-fires, RAG 開書考試 auto-aims, Skills SOP halves your ability cooldown. Learn all six in a round to become 「AI 術語大師」 (+250).
+4. **Controls.** Move, aim, shoot, plus one ability, 重新生成 Regenerate (dash, heal, short shield). Desktop: WASD, mouse, Space. Phone: twin thumb sticks and a 🔄 button.
+5. **Lead loop.** Email gate before the first match, an invite button in the match, and a cha chaan teng receipt at the end of each round listing what you learned next to a Follow @aliigpt button.
 
 ## Stack
 
 - **Client:** Three.js and Vite (`client/`)
 - **Server:** Colyseus 0.16 over WebSockets, server-authoritative for hits, scoring, pickups and bots (`server/`)
 - **Shared rules and map:** `shared/game.js`
-- **All teaching copy and branding:** `shared/theme.js`. Edit this one file to change the lessons or the niche.
+- **All teaching copy and branding (Cantonese + English):** `shared/theme.js`. Interface text: `client/i18n.js`.
 
 ## Run locally
 
@@ -48,11 +53,11 @@ To run it production-style, use `npm run build && npm start` and open http://loc
 | `ADMIN_KEY` | Enables `/api/leads.csv` |
 | `LEADS_WEBHOOK_URL` | Optional. Every signup is POSTed here as JSON |
 | `DATA_DIR` | Where `leads.jsonl` lives |
-| `ROUND_SECONDS`, `BOTS` | Testing overrides |
+| `ROUND_SECONDS`, `BOTS`, `SCAM_CHANCE` | Testing overrides |
 
 ## Test
 
 ```bash
-BOTS=0 ROUND_SECONDS=14 npm start    # in one shell
-node scripts/sim-test.js             # two headless players: join, shoot, collect, finish a round
+BOTS=0 SCAM_CHANCE=0 ROUND_SECONDS=50 npm start   # in one shell
+node scripts/sim-test.js   # two headless players: tag, token meter, bag overflow, Agent, round reset
 ```

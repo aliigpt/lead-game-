@@ -28,5 +28,5 @@ const gameServer = new Server({ transport: new WebSocketTransport({ server }) })
 gameServer.define("arena", ArenaRoom);
 
 gameServer.listen(PORT).then(() => {
-  console.log(`Prompt Arena listening on http://localhost:${PORT}`);
+  console.log(`AI Jargon Brawl listening on http://localhost:${PORT}`);
 });

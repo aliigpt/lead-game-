@@ -36,41 +36,66 @@ export const BOT = {
   radius: 0.8,
   hp: 40,
   speed: 3.6,
-  chaseRange: 14,
-  touchDps: 22,
+  chaseRange: 12,
+  touchDps: 16,
   respawn: 6,
 };
 
 export const SCORE = {
   kill: 100,
   bot: 50,
-  piece: 10,
-  complete: 250,
+  card: 10,
+  master: 250, // all six cards learned in one round
+};
+
+// Token = taxi meter: every shot costs tokens, the meter refills over time.
+export const TOKENS = { max: 20, refill: 4, cost: 1 };
+// Context window = schoolbag: holds this many cards, oldest falls out.
+export const BAG_SIZE = 3;
+export const CARD_COUNT = 6;
+// Prompt injection = phone scam: some cards are fakes.
+export const SCAM = { chance: 0.25, seconds: 3 };
+// Standing near the LLM brain in the middle scores points.
+export const ZONE = { radius: 5.6, pps: 4 };
+// Card powers
+export const POWERS = {
+  llmDamage: 1.5,
+  apiHeal: 5, // hp per second
+  mcpRefill: 2, // token refill multiplier
+  agentInterval: 0.7, // seconds between assistant shots
+  agentRange: 11,
+  ragCone: 0.55, // radians either side of your aim
+  ragRange: 18,
+  skillsCooldown: 0.5,
 };
 
 export const PICKUP_RADIUS = 1.3;
 export const PICKUP_RESPAWN = 8;
 
-// Map: GPU towers (tall) and server racks (long, low walls).
-// Each box is centered at (x, z) with half-extents (hx, hz) and a height h.
+// Map: a Hong Kong street block. Boxes are centered at (x, z) with
+// half-extents (hx, hz) and height h. kind picks how the client draws them.
 export const OBSTACLES = [
-  // center core
-  { x: 0, z: 0, hx: 2.2, hz: 2.2, h: 3.5, kind: "core" },
-  // four GPU towers around the core
-  { x: -9, z: -9, hx: 1.4, hz: 1.4, h: 4, kind: "gpu" },
-  { x: 9, z: -9, hx: 1.4, hz: 1.4, h: 4, kind: "gpu" },
-  { x: -9, z: 9, hx: 1.4, hz: 1.4, h: 4, kind: "gpu" },
-  { x: 9, z: 9, hx: 1.4, hz: 1.4, h: 4, kind: "gpu" },
-  // server racks
-  { x: 0, z: -15, hx: 5, hz: 0.6, h: 1.6, kind: "rack" },
-  { x: 0, z: 15, hx: 5, hz: 0.6, h: 1.6, kind: "rack" },
-  { x: -15, z: 0, hx: 0.6, hz: 5, h: 1.6, kind: "rack" },
-  { x: 15, z: 0, hx: 0.6, hz: 5, h: 1.6, kind: "rack" },
-  // corner cover
-  { x: -19, z: -19, hx: 2.5, hz: 0.6, h: 1.6, kind: "rack" },
-  { x: 19, z: 19, hx: 2.5, hz: 0.6, h: 1.6, kind: "rack" },
-  { x: 19, z: -19, hx: 0.6, hz: 2.5, h: 1.6, kind: "rack" },
-  { x: -19, z: 19, hx: 0.6, hz: 2.5, h: 1.6, kind: "rack" },
+  // the LLM "brain" kiosk in the middle
+  { x: 0, z: 0, hx: 2.2, hz: 2.2, h: 3.4, kind: "core" },
+  // four tong lau shop buildings
+  { x: -9, z: -9, hx: 1.5, hz: 1.5, h: 4.6, kind: "shop", sign: 0 },
+  { x: 9, z: -9, hx: 1.5, hz: 1.5, h: 4.6, kind: "shop", sign: 1 },
+  { x: -9, z: 9, hx: 1.5, hz: 1.5, h: 4.6, kind: "shop", sign: 2 },
+  { x: 9, z: 9, hx: 1.5, hz: 1.5, h: 4.6, kind: "shop", sign: 3 },
+  // parked taxis and minibuses
+  { x: -2.9, z: -15, hx: 2.2, hz: 0.95, h: 1.5, kind: "taxi" },
+  { x: 3.1, z: -15, hx: 2.6, hz: 1.1, h: 2.3, kind: "minibus" },
+  { x: 2.9, z: 15, hx: 2.2, hz: 0.95, h: 1.5, kind: "taxi" },
+  { x: -3.1, z: 15, hx: 2.6, hz: 1.1, h: 2.3, kind: "minibus" },
+  { x: -15, z: 2.9, hx: 0.95, hz: 2.2, h: 1.5, kind: "taxi" },
+  { x: -15, z: -3.1, hx: 1.1, hz: 2.6, h: 2.3, kind: "minibus" },
+  { x: 15, z: -2.9, hx: 0.95, hz: 2.2, h: 1.5, kind: "taxi" },
+  { x: 15, z: 3.1, hx: 1.1, hz: 2.6, h: 2.3, kind: "minibus" },
+  // pedestrian railings in the corners
+  { x: -19, z: -19, hx: 2.5, hz: 0.25, h: 1.1, kind: "rail" },
+  { x: 19, z: 19, hx: 2.5, hz: 0.25, h: 1.1, kind: "rail" },
+  { x: 19, z: -19, hx: 0.25, hz: 2.5, h: 1.1, kind: "rail" },
+  { x: -19, z: 19, hx: 0.25, hz: 2.5, h: 1.1, kind: "rail" },
 ];
 
 export const SPAWNS = [
@@ -78,19 +103,19 @@ export const SPAWNS = [
   { x: 0, z: -21 }, { x: 0, z: 21 }, { x: -21, z: 0 }, { x: 21, z: 0 },
 ];
 
-// Where prompt pieces appear. kind indexes into PIECES in theme.js.
+// Where term cards appear. kind indexes into CARDS in theme.js.
 export const PICKUP_SPOTS = [
   { x: -5, z: -5, kind: 0 }, { x: 5, z: 5, kind: 0 },
   { x: 5, z: -5, kind: 1 }, { x: -5, z: 5, kind: 1 },
   { x: 0, z: -9, kind: 2 }, { x: 0, z: 9, kind: 2 },
   { x: -9, z: 0, kind: 3 }, { x: 9, z: 0, kind: 3 },
   { x: -17, z: -10, kind: 4 }, { x: 17, z: 10, kind: 4 },
-  { x: 10, z: -18, kind: 2 }, { x: -10, z: 18, kind: 1 },
+  { x: 10, z: -19, kind: 5 }, { x: -10, z: 19, kind: 5 },
 ];
 
 export const COLORS = [
-  "#d62976", "#4f5bd5", "#fa7e1e", "#962fbf",
-  "#00a884", "#0095f6", "#ff3040", "#e0a800",
+  "#e63946", "#2a6fdb", "#f4a261", "#8e44ad",
+  "#16a085", "#ff70a6", "#ffbe0b", "#3ec1d3",
 ];
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

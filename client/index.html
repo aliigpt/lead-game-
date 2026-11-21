@@ -1,139 +1,135 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-HK">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#962fbf" />
-  <title>Prompt Arena by @aliigpt</title>
-  <meta name="description" content="A free 3D multiplayer browser game that teaches ChatGPT, Claude and Gemini tips. Play with friends, no download." />
-  <meta property="og:title" content="Prompt Arena by @aliigpt" />
-  <meta property="og:description" content="Learn ChatGPT, Claude and Gemini tricks while you play. Free 3D multiplayer game, in your browser." />
+  <meta name="theme-color" content="#c8102e" />
+  <title>AI 術語大亂鬥 · AI Jargon Brawl by @aliigpt</title>
+  <meta name="description" content="一邊打機，一邊學識 AI 術語。Free 3D multiplayer browser game by @aliigpt: learn AI jargon while you fight your friends." />
+  <meta property="og:title" content="AI 術語大亂鬥 · AI Jargon Brawl" />
+  <meta property="og:description" content="Token = 的士咪錶 🚕 · RAG = 開書考試 📖 · Hallucination = 作故仔同事 🤥. 一邊打機一邊學 AI。" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@500;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div id="stage"></div>
 
-  <!-- Story-style onboarding: cover, how to play, unlock (or welcome back) -->
-  <section id="story" class="story-wrap hidden">
-    <div class="story">
-      <div class="bars" id="storyBars"></div>
-      <header class="story-head">
-        <span class="ring"><b>A</b></span>
-        <span class="handle">aliigpt</span>
-        <span class="muted">Prompt Arena</span>
+  <!-- Menu: start → unlock, or welcome back -->
+  <section id="menu" class="screen hidden">
+    <div class="board">
+      <header class="sign">
+        <button class="lang" id="langBtn" type="button">EN</button>
+        <span class="sign-by" data-handle></span>
+        <h1 id="gameTitle"></h1>
+        <p class="sign-sub" id="tagline"></p>
       </header>
 
-      <article class="slide" data-slide="cover">
-        <p class="kicker" id="coverKicker">A game by @aliigpt</p>
-        <h1>Prompt<br />Arena</h1>
-        <p class="lead">Learn ChatGPT, Claude and Gemini tricks while you play.</p>
-        <div class="chips" id="toolChips"></div>
-        <p class="tap-hint">Tap to continue</p>
-      </article>
-
-      <article class="slide" data-slide="how">
-        <p class="kicker">How to win</p>
+      <div class="step" data-step="start">
+        <h3 data-i18n="menuTitle"></h3>
+        <ul class="menu-list" id="menuList"></ul>
+        <h3 data-i18n="howTitle"></h3>
         <ol class="how">
-          <li><span class="n">1</span><div><b>Grab the 5 prompt pieces</b><p>Each one teaches part of a great prompt. All 5 = +250.</p></div></li>
-          <li><span class="n">2</span><div><b>Bust Hallucinations</b><p>Shoot the dark glitch bots. Each one drops a trust tip.</p></div></li>
-          <li><span class="n">3</span><div><b>Tag your friends</b><p>Share the link. 2:30 rounds. Top score wins.</p></div></li>
+          <li><span>🃏</span><b data-i18n="how1"></b></li>
+          <li><span>🤥</span><b data-i18n="how2"></b></li>
+          <li><span>🎯</span><b data-i18n="how3"></b></li>
         </ol>
-        <div class="highlights preview" id="howHighlights"></div>
-        <p class="controls"><span class="desk">WASD move · mouse aim · click shoot · Space = Regenerate</span><span class="touch">Left thumb moves · right thumb aims and shoots · ⚡ = Regenerate</span></p>
-      </article>
+        <p class="note" data-i18n="howNote"></p>
+        <p class="controls"><span class="desk" data-i18n="controlsDesk"></span><span class="touch" data-i18n="controlsTouch"></span></p>
+        <button class="btn red" id="startBtn" type="button" data-i18n="start"></button>
+      </div>
 
-      <article class="slide" data-slide="gate">
-        <p class="kicker">Last step</p>
-        <h2>Unlock the game</h2>
+      <div class="step" data-step="gate">
+        <h2 data-i18n="gateTitle"></h2>
+        <p class="sub" data-i18n="gateSub"></p>
         <form id="gateForm" novalidate>
-          <input name="name" maxlength="16" autocomplete="nickname" placeholder="Player name" aria-label="Player name" required />
-          <input name="email" type="email" autocomplete="email" inputmode="email" placeholder="Email" aria-label="Email" required />
-          <label class="check"><input name="consent" type="checkbox" /><span data-consent></span></label>
+          <input name="name" maxlength="16" autocomplete="nickname" data-i18n-ph="name" required />
+          <input name="email" type="email" autocomplete="email" inputmode="email" data-i18n-ph="email" required />
+          <label class="check"><input name="consent" type="checkbox" /><span id="consentText"></span></label>
           <p class="error" id="gateError" role="alert"></p>
-          <button type="submit" class="pill white" id="gateBtn">Play now</button>
+          <button type="submit" class="btn red" id="gateBtn" data-i18n="playNow"></button>
         </form>
-        <p class="fine">Free · no download · phone or desktop</p>
-      </article>
+        <p class="fine"><a href="#" id="backBtn" data-i18n="back"></a> · <span data-i18n="fine"></span></p>
+      </div>
 
-      <article class="slide" data-slide="welcome">
-        <p class="kicker" id="welcomeKicker">Welcome back</p>
-        <h1 id="welcomeName"></h1>
-        <p class="lead" id="welcomeNote"></p>
-        <div class="highlights preview" id="welcomeHighlights"></div>
-        <button class="pill white" id="playBtn">Play</button>
-        <p class="fine"><a href="#" id="notYou">Not you?</a></p>
-      </article>
-
-      <button class="tapzone prev" aria-label="Previous"></button>
-      <button class="tapzone next" aria-label="Next"></button>
+      <div class="step" data-step="welcome">
+        <p class="kicker" id="welcomeKicker"></p>
+        <h2 id="welcomeName"></h2>
+        <p class="sub" id="welcomeNote"></p>
+        <ul class="menu-list compact" id="welcomeList"></ul>
+        <button class="btn red" id="playBtn" type="button"></button>
+        <p class="fine"><a href="#" id="notYou" data-i18n="notYou"></a></p>
+      </div>
     </div>
   </section>
 
   <!-- HUD -->
   <section id="hud" class="hidden">
-    <div class="timebar"><i id="timeFill"></i></div>
-    <div class="hud-top">
-      <div class="me-chip">
-        <span class="ring" id="meRing"><b id="meInitial"></b></span>
-        <div class="me-text">
-          <b id="meName"></b>
-          <span id="meRank">0 pts</span>
-          <div class="hp"><i id="hpFill"></i></div>
-        </div>
+    <div class="chip me">
+      <span class="dot" id="meDot"></span>
+      <div>
+        <b id="meName"></b>
+        <span id="meRank"></span>
+        <div class="hp"><i id="hpFill"></i></div>
       </div>
-      <div class="time" id="timer">2:30</div>
-      <button id="inviteBtn" class="icon-btn" aria-label="Invite friends">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 3 9.2 10.1M22 3l-7 19-3.7-8.3L3 10l19-7Z"/></svg>
-      </button>
     </div>
-    <ol class="board" id="board"></ol>
+    <div class="led timer"><small data-i18n="round"></small><b id="timer">2:30</b></div>
+    <div class="top-right">
+      <button id="inviteBtn" class="icon-btn" type="button" aria-label="Invite">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+      </button>
+      <ol class="scores" id="board"></ol>
+    </div>
+
+    <div class="meter" id="meter">
+      <div class="meter-top"><span>🚕 TOKEN</span><b id="tokenNum">20</b></div>
+      <div class="meter-bar"><i id="tokenFill"></i></div>
+    </div>
+    <div class="bag" id="bagBox">
+      <div class="bag-head"><span>🎒 <span data-i18n="bag"></span> <b id="bagCount">0/3</b></span><span class="learned"><span data-i18n="learned"></span> <span id="learnedDots"></span></span></div>
+      <div class="bag-slots" id="bagSlots"></div>
+    </div>
+    <div class="zone-badge hidden" id="zoneBadge" data-i18n="zone"></div>
+
     <div id="toasts"></div>
-    <div class="comments" id="feed"></div>
-    <div class="highlights" id="slots"></div>
-    <button id="abilityBtn" class="ability" aria-label="Regenerate"><span>⚡</span></button>
+    <div class="feed" id="feed"></div>
+    <button id="abilityBtn" class="ability" type="button" aria-label="Regenerate"><span>🔄</span></button>
     <div id="joyL" class="joy hidden"><div class="knob"></div></div>
     <div id="joyR" class="joy hidden"><div class="knob"></div></div>
   </section>
 
   <!-- Death -->
-  <section id="death" class="story-wrap dim hidden">
-    <div class="story compact">
-      <div class="bars"><i><s id="deathBar"></s></i></div>
-      <div class="slide on center">
-        <p class="kicker">Deleted by</p>
-        <h2 id="deathBy"></h2>
-        <div class="tip-card" id="deathTip"></div>
-        <p class="fine">You lost the prompt pieces you were holding. Back in <b id="deathCount">3</b></p>
-      </div>
+  <section id="death" class="overlay hidden">
+    <div class="card death-card">
+      <h2 id="deathBy"></h2>
+      <div class="term-card" id="deathTerm"></div>
+      <p class="fine" id="deathCount"></p>
     </div>
   </section>
 
-  <!-- Round recap -->
-  <section id="results" class="story-wrap hidden">
-    <div class="story">
-      <div class="bars"><i><s id="nextBar"></s></i></div>
-      <header class="story-head">
-        <span class="ring"><b>A</b></span>
-        <span class="handle">aliigpt</span>
-        <span class="muted">Round recap</span>
+  <!-- Round recap: a cha chaan teng receipt -->
+  <section id="results" class="overlay hidden">
+    <div class="receipt">
+      <header>
+        <b data-i18n="receiptTitle"></b>
+        <span><span data-i18n="receiptNo"></span> #<span id="roundNo">1</span></span>
       </header>
-      <div class="slide on recap">
-        <h2 id="winnerLine">Round over</h2>
-        <ol class="ranking" id="ranking"></ol>
-        <p class="kicker">What you learned</p>
-        <ul class="learned" id="learned"></ul>
-        <div class="cta">
-          <a class="pill follow" id="followBtn" target="_blank" rel="noopener">Follow <span data-handle></span></a>
-          <button class="pill ghost" id="inviteBtn2">Invite friends</button>
-        </div>
-        <p class="fine">Next round in <b id="nextIn">12</b>s</p>
+      <h2 id="winnerLine"></h2>
+      <ol class="ranking" id="ranking"></ol>
+      <h3 data-i18n="todayLearned"></h3>
+      <ul class="learned-list" id="learned"></ul>
+      <p class="thanks" data-i18n="thanks"></p>
+      <div class="cta">
+        <a class="btn red" id="followBtn" target="_blank" rel="noopener"></a>
+        <button class="btn ghost" id="inviteBtn2" type="button" data-i18n="inviteFriends"></button>
       </div>
+      <p class="fine" id="nextIn"></p>
+      <button class="lang small" id="langBtn2" type="button">EN</button>
     </div>
   </section>
 
+  <div id="scamFx" class="scam-fx"></div>
   <div id="flash" class="flash"></div>
   <script type="module" src="./main.js"></script>
 </body>

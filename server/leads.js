@@ -69,13 +69,13 @@ function limited(ip) {
 
 export function registerLeadRoutes(app, express) {
   app.post("/api/lead", express.json({ limit: "4kb" }), async (req, res) => {
-    if (limited(req.ip)) return res.status(429).json({ error: "Slow down a sec and try again." });
+    if (limited(req.ip)) return res.status(429).json({ code: "rate", error: "Slow down a sec and try again." });
     const name = cleanName(req.body?.name);
     const email = String(req.body?.email || "").trim().toLowerCase().slice(0, 254);
     const consent = req.body?.consent === true;
-    if (!name) return res.status(400).json({ error: "Pick a player name." });
-    if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "That email doesn't look right." });
-    if (!consent) return res.status(400).json({ error: "Tick the box to unlock the game." });
+    if (!name) return res.status(400).json({ code: "name", error: "Pick a player name." });
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ code: "email", error: "That email doesn't look right." });
+    if (!consent) return res.status(400).json({ code: "consent", error: "Tick the box to unlock the game." });
 
     const lead = {
       name,
